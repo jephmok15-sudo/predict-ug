@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Predict UG — Secure Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    body{margin:0;background:#050505;color:#fff;font-family:'Poppins',sans-serif}
+    .wrap{max-width:1100px;margin:18px auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between}
+    header h1{color:#ff2b2b;margin:0}
+    .login{max-width:420px;margin:36px auto;background:#0f0f0f;padding:18px;border-radius:12px;border:1px solid #222}
+    input{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:1px solid #333;background:#000;color:#fff}
+    button{background:#ff2b2b;border:none;padding:10px 14px;border-radius:8px;color:#fff;cursor:pointer}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-top:18px}
+    .card{background:#0f0f0f;padding:16px;border-radius:12px;border:1px solid #222}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border:1px solid #222}
+    .small{font-size:13px;color:#bbb}
+    .success{color:#6cf}
+    .note{color:#aaa;font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>PREDICT UG — ADMIN</h1>
+      <div class="small">Owner access only</div>
+    </header>
+
+    <!-- LOGIN (simple) -->
+    <div id="loginWrap" class="login" style="display:block">
+      <h3 style="margin:0 0 8px">Admin login</h3>
+      <input id="adminPass" type="password" placeholder="Enter admin password">
+      <div class="small note">Password is hidden; we DO NOT display it on the page.</div>
+      <button onclick="doLogin()">Login</button>
+    </div>
+
+    <!-- MAIN -->
+    <div id="mainUI" style="display:none">
+      <div class="grid">
+        <div>
+          <div class="card">
+            <h3>Add Prediction</h3>
+            <input id="g_game" placeholder="Match / Event">
+            <input id="g_odd" placeholder="Odds">
+            <textarea id="g_tip" placeholder="Prediction details" style="width:100%;height:80px;background:#000;color:#fff;border:1px solid #333;border-radius:8px;padding:10px"></textarea>
+            <button onclick="publishPrediction()">Publish</button>
+            <div class="note">Published predictions go to the public site immediately.</div>
+          </div>
+
+          <div class="card" style="margin-top:14px">
+            <h3>Published Predictions</h3>
+            <div id="publishedList" style="max-height:320px;overflow:auto"></div>
+          </div>
+
+          <div class="card" style="margin-top:14px">
+            <h3>Payments / Receipts (manual)</h3>
+            <div id="paymentsBox">
+              <table>
+                <thead><tr><th>User</th><th>Amount</th><th>Type</th><th>Date</th></tr></thead>
+                <tbody id="paymentsTbody"></tbody>
+              </table>
+            </div>
+            <div style="margin-top:10px">
+              <input id="p_user" placeholder="User name/phone">
+              <input id="p_amount" placeholder="Amount (UGX)">
+              <select id="p_type"><option>MTN</option><option>Airtel</option><option>Manual</option></select>
+              <button onclick="addPayment()">Record Payment</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h3>Quick Stats</h3>
+            <div class="small">Users: <strong id="statUsers">0</strong></div>
+            <div class="small">Total Points: <strong id="statPoints">0</strong></div>
+            <div class="small">Earnings: <strong id="statMoney">UGX 0</strong></div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3>System Settings</h3>
+            <label>Min points (users)</label>
+            <input id="s_min" placeholder="eg 50">
+            <label>Max points</label>
+            <input id="s_max" placeholder="eg 10000">
+            <div style="margin-top:10px">
+              <button onclick="saveSettings()">Save</button>
+            </div>
+            <div class="note" style="margin-top:8px">Settings stored in Firebase.</div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3>Ads & Affiliate</h3>
+            <label>Affiliate link (URL)</label>
+            <input id="aff_url" placeholder="https://">
+            <label>Affiliate name</label>
+            <input id="aff_name" placeholder="Partner">
+            <label>Top ad HTML (paste ad code)</label>
+            <textarea id="ad_top" style="height:90px;background:#000;color:#fff;border:1px solid #333"></textarea>
+            <div style="margin-top:10px"><button onclick="saveAffiliateAds()">Save Ads & Affiliate</button></div>
+            <div class="note">Top ad HTML will be shown on the homepage ad slot.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+  // config (same as before)
+  const firebaseConfig = {
+    apiKey: "AIzaSyBnIeC8g8sx0KxKgoHQNqRlT3u3EVYA_10",
+    authDomain: "predict-ug.firebaseapp.com",
+    databaseURL: "https://predict-ug-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "predict-ug",
+    storageBucket: "predict-ug.firebasestorage.app",
+    messagingSenderId: "904307610384",
+    appId: "1:904307610384:web:588965a0949648ff89cb95",
+    measurementId: "G-4343P0JB6N"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ADMIN PASSWORD (client-side check). We DO NOT show password on page.
+  const ADMIN_PASSWORD = "attractive.";
+
+  function doLogin(){
+    const v = document.getElementById('adminPass').value;
+    if(v === ADMIN_PASSWORD){
+      document.getElementById('loginWrap').style.display='none';
+      document.getElementById('mainUI').style.display='block';
+      loadAll();
+    } else {
+      alert('Wrong password');
+    }
+  }
+
+  // add prediction
+  function publishPrediction(){
+    const game = document.getElementById('g_game').value.trim();
+    const tip = document.getElementById('g_tip').value.trim();
+    const odd = document.getElementById('g_odd').value.trim();
+    if(!game || !tip){ alert('Fill event and tip'); return; }
+    const node = db.ref('predictions').push();
+    node.set({
+      game, tip, odd,
+      ts: Date.now(),
+      date: new Date().toLocaleString()
+    }).then(()=>{
+      alert('Prediction published');
+      document.getElementById('g_game').value='';
+      document.getElementById('g_tip').value='';
+      document.getElementById('g_odd').value='';
+    }).catch(e=>alert('Error:'+e.message));
+  }
+
+  // show predictions list
+  function renderPublished(data){
+    const wrap = document.getElementById('publishedList');
+    wrap.innerHTML='';
+    for(const key in data || {}){
+      const p = data[key];
+      const row = document.createElement('div');
+      row.style.marginBottom='10px';
+      row.innerHTML = `<strong>${p.game}</strong><div class="small">${p.tip}</div>
+        <div style="margin-top:6px"><button onclick="deletePrediction('${key}')">Delete</button> <span class="small" style="margin-left:8px">${p.date}</span></div>`;
+      wrap.appendChild(row);
+    }
+  }
+
+  function deletePrediction(key){
+    if(!confirm('Delete this prediction?')) return;
+    db.ref('predictions/'+key).remove().then(()=>{ alert('Deleted'); }).catch(e=>alert('Err:'+e.message));
+  }
+
+  // payments (manual record)
+  function addPayment(){
+    const user = document.getElementById('p_user').value.trim();
+    const amount = Number(document.getElementById('p_amount').value);
+    const type = document.getElementById('p_type').value;
+    if(!user || !amount){ alert('Provide user and amount'); return; }
+    const n = db.ref('payments').push();
+    n.set({user,amount,type,date:new Date().toLocaleString(),ts:Date.now()}).then(()=>{
+      alert('Payment recorded');
+      document.getElementById('p_user').value='';
+      document.getElementById('p_amount').value='';
+      updateStats(); // recalc
+    });
+  }
+
+  // settings save
+  function saveSettings(){
+    const min = Number(document.getElementById('s_min').value || 0);
+    const max = Number(document.getElementById('s_max').value || 0);
+    db.ref('settings/limits').set({min,max}).then(()=>alert('Settings saved'));
+  }
+
+  function saveAffiliateAds(){
+    const url = document.getElementById('aff_url').value.trim();
+    const name = document.getElementById('aff_name').value.trim();
+    const top = document.getElementById('ad_top').value.trim();
+    const payload = {affiliate:{url,name}, topAdHtml: top};
+    db.ref('settings').update(payload).then(()=>alert('Ads & affiliate saved'));
+  }
+
+  // listeners & load
+  function loadAll(){
+    db.ref('predictions').on('value', snap=>{
+      renderPublished(snap.val());
+    });
+    db.ref('payments').on('value', snap=>{
+      renderPayments(snap.val());
+      updateStats();
+    });
+    db.ref('settings').on('value', snap=>{
+      const s = snap.val() || {};
+      if(s.affiliate){ document.getElementById('aff_url').value = s.affiliate.url || ''; document.getElementById('aff_name').value = s.affiliate.name || ''; }
+      if(s.topAdHtml) document.getElementById('ad_top').value = s.topAdHtml;
+      if(s.limits){ document.getElementById('s_min').value = s.limits.min||''; document.getElementById('s_max').value = s.limits.max||''; }
+    });
+
+    updateStats();
+  }
+
+  function renderPayments(list){
+    const t = document.getElementById('paymentsTbody');
+    t.innerHTML='';
+    for(const k in list || {}){
+      const p = list[k];
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(p.user)}</td><td>UGX ${Number(p.amount).toLocaleString()}</td><td>${escapeHtml(p.type)}</td><td>${escapeHtml(p.date)}</td>`;
+      t.appendChild(tr);
+    }
+  }
+
+  // compute stats
+  function updateStats(){
+    db.ref('users').once('value').then(s=>{ document.getElementById('statUsers').innerText = s.numChildren ? s.numChildren() : (s.val()?Object.keys(s.val()).length:0) });
+    db.ref('points').once('value').then(s=>{ const v = s.val() || 0; document.getElementById('statPoints').innerText = v; });
+    db.ref('payments').once('value').then(s=>{
+      const data = s.val() || {};
+      let total = 0;
+      for(const k in data) total += Number(data[k].amount||0);
+      document.getElementById('statMoney').innerText = 'UGX ' + total.toLocaleString();
+      // also render table
+      renderPayments(data);
+    });
+  }
+
+  function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  </script>
+</body>
+</html>

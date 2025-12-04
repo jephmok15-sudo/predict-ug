@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Predict UG ✅</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- GOOGLE FONT -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- FIREBASE V9 -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Poppins", sans-serif; }
+
+    body {
+      background: #000;
+      color: #fff;
+    }
+
+    header {
+      text-align: center;
+      padding: 30px 15px;
+      border-bottom: 1px solid #222;
+    }
+
+    header h1 {
+      color: red;
+      font-size: 26px;
+    }
+
+    header p {
+      margin-top: 5px;
+      color: #aaa;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px 15px 80px;
+    }
+
+    .card {
+      background: #0f0f0f;
+      padding: 15px;
+      border-radius: 12px;
+      border: 1px solid #222;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      margin-bottom: 12px;
+    }
+
+    /* Prediction Card */
+    .prediction {
+      background: #000;
+      border: 1px solid #222;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 10px;
+    }
+
+    .prediction h3 {
+      color: red;
+      margin-bottom: 5px;
+    }
+
+    .odds {
+      border: 1px solid red;
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 5px;
+      margin: 6px 0;
+      color: #fff;
+    }
+
+    .btn {
+      display: inline-block;
+      background: red;
+      color: white;
+      text-decoration: none;
+      padding: 8px 14px;
+      margin-top: 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    footer {
+      text-align: center;
+      padding: 15px;
+      font-size: 13px;
+      background: #0a0a0a;
+      color: #777;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+    .loader {
+      text-align: center;
+      color: #777;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 20px }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PREDICT UG ✅</h1>
+  <p>Smart football predictions & betting tips platform</p>
+</header>
+
+<div class="container">
+
+  <!-- TOP AD SLOT -->
+  <div class="card" id="topAdBox">
+    <div class="loader">Loading ad...</div>
+  </div>
+
+  <!-- LATEST PREDICTIONS -->
+  <div class="card">
+    <h2>🔥 Latest Predictions</h2>
+    <div id="predictionsList">
+      <div class="loader">Loading predictions...</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Predict UG © 2025 | We provide predictions only, no direct betting.
+</footer>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBnIeC8g8sx0KxKgoHQNqRlT3u3EVYA_10",
+    authDomain: "predict-ug.firebaseapp.com",
+    databaseURL: "https://predict-ug-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "predict-ug",
+    storageBucket: "predict-ug.firebasestorage.app",
+    messagingSenderId: "904307610384",
+    appId: "1:904307610384:web:588965a0949648ff89cb95"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const db = firebase.database();
+  const predictionsRef = db.ref("predictions");
+  const adsRef = db.ref("adsAffiliate");
+
+  const predictionsContainer = document.getElementById("predictionsList");
+  const topAdBox = document.getElementById("topAdBox");
+
+  // LOAD PREDICTIONS
+  predictionsRef.on("value", (snapshot) => {
+    const data = snapshot.val();
+    predictionsContainer.innerHTML = "";
+
+    if (!data) {
+      predictionsContainer.innerHTML = "<p style='color:#888'>No predictions yet.</p>";
+      return;
+    }
+
+    Object.values(data).reverse().forEach((item) => {
+      if (!item.match) return;
+
+      const card = document.createElement("div");
+      card.className = "prediction";
+
+      card.innerHTML = `
+        <h3>${item.match}</h3>
+        <div class="odds">Odds: ${item.odds}</div>
+        <p>${item.details}</p>
+        ${item.affiliateLink ? `<a class="btn" target="_blank" href="${item.affiliateLink}">BET NOW</a>` : ""}
+      `;
+
+      predictionsContainer.appendChild(card);
+    });
+  });
+
+  // LOAD ADS & AFFILIATE
+  adsRef.on("value", (snapshot) => {
+    const data = snapshot.val();
+
+    if (!data) {
+      topAdBox.innerHTML = "<p style='color:#777'>No ad set in admin panel.</p>";
+      return;
+    }
+
+    if (data.topAdHtml && data.topAdHtml.length > 5) {
+      topAdBox.innerHTML = data.topAdHtml;
+    } else {
+      topAdBox.innerHTML = `
+        <h3>${data.affiliateName || "Our Partner"}</h3>
+        <a class="btn" target="_blank" href="${data.affiliateLink || "#"}">JOIN & BET</a>
+      `;
+    }
+  });
+
+</script>
+
+</body>
+</html>

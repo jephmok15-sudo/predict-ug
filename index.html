@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Predict UG — Smart Predictions</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#000;--card:#0f0f0f;--muted:#9a9a9a;--accent:#e61a1a;--white:#fff}
+  *{box-sizing:border-box;font-family:Poppins,system-ui,Arial}
+  body{margin:0;background:var(--bg);color:var(--white);-webkit-font-smoothing:antialiased}
+  header{padding:30px 20px;text-align:center;border-bottom:1px solid #222}
+  header h1{margin:0;color:var(--accent);letter-spacing:1px}
+  header p{margin:6px 0 0;color:#bbb}
+  .wrap{max-width:920px;margin:22px auto;padding:0 16px}
+  .card{background:var(--card);border-radius:12px;padding:18px;margin-bottom:18px;box-shadow:0 2px 0 rgba(255,255,255,0.01)}
+  .card h2{margin:0 0 10px;color:var(--accent)}
+  /* stats */
+  .stats{display:flex;gap:12px;justify-content:space-between}
+  .stat{flex:1;padding:16px;border-radius:10px;text-align:center;background:#0a0a0a}
+  .stat strong{display:block;font-size:22px}
+  .search{padding:10px;border-radius:8px;background:#0b0b0b;border:1px solid #222;color:#ccc;width:100%}
+  /* predictions */
+  .prediction{padding:14px;border-radius:10px;background:#0b0b0b;margin-bottom:12px}
+  .prediction h3{margin:0;color:var(--accent)}
+  .odds{display:inline-block;margin:8px 0;padding:6px 10px;border-radius:8px;border:1px solid #333}
+  .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:var(--white);text-decoration:none}
+  footer{padding:26px;text-align:center;color:#777}
+  /* responsive */
+  @media(min-width:720px){
+    .stats{gap:18px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PREDICT UG ✅</h1>
+  <p>Smart football predictions & tips (No direct betting)</p>
+</header>
+
+<div class="wrap">
+
+  <!-- TOP AD / VIDEO / IMAGE -->
+  <div id="topAdBox" class="card">
+    <h2>Sponsored</h2>
+    <div id="topAdContent" style="color:#aaa">Loading ads...</div>
+  </div>
+
+  <!-- STATS -->
+  <div class="card stats" aria-live="polite">
+    <div class="stat">
+      <strong id="statPredictions">0</strong>
+      Predictions
+    </div>
+    <div class="stat">
+      <strong id="statPoints">0</strong>
+      Total Points
+    </div>
+    <div class="stat">
+      <strong id="statEarnings">UGX 0</strong>
+      Earnings
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card">
+    <h2>Search Match</h2>
+    <input id="searchBox" class="search" placeholder="e.g Arsenal vs Chelsea">
+  </div>
+
+  <!-- LATEST PREDICTIONS -->
+  <div class="card">
+    <h2>🔥 Latest Predictions</h2>
+    <div id="predictionsList"><div style="color:#888">Loading predictions...</div></div>
+  </div>
+
+  <!-- SUPPORT/PARTNER -->
+  <div class="card">
+    <h2>Support / Partner</h2>
+    <p style="color:#bbb">This website provides football predictions only. To support or partner with us, contact admin.</p>
+  </div>
+
+</div>
+
+<footer>
+  Predict UG © 2025 | We provide predictions only, no direct betting.
+</footer>
+
+<!-- FIREBASE (Realtime DB) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  // ---------- FIREBASE CONFIG (use your config) ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyBnIeC8g8sx0KxKgoHQNqRlT3u3EVYA_10",
+    authDomain: "predict-ug.firebaseapp.com",
+    databaseURL: "https://predict-ug-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "predict-ug",
+    storageBucket: "predict-ug.firebasestorage.app",
+    messagingSenderId: "904307610384",
+    appId: "1:904307610384:web:588965a0949648ff89cb95"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // refs
+  const predictionsRef = db.ref('predictions');
+  const adsRef = db.ref('adsAffiliate');
+  const statsRef = db.ref('stats');
+  const paymentsRef = db.ref('payments'); // manual payments recorded via admin
+
+  // ui
+  const predictionsList = document.getElementById('predictionsList');
+  const topAdContent = document.getElementById('topAdContent');
+  const statPredictions = document.getElementById('statPredictions');
+  const statPoints = document.getElementById('statPoints');
+  const statEarnings = document.getElementById('statEarnings');
+  const searchBox = document.getElementById('searchBox');
+
+  // load ads/affiliate
+  adsRef.on('value', snap => {
+    const data = snap.val();
+    if (!data) {
+      topAdContent.innerHTML = "<p style='color:#777'>No ad yet (set in admin panel)</p>";
+      return;
+    }
+    if (data.topAdHtml) {
+      topAdContent.innerHTML = data.topAdHtml; // admin can paste raw html (images, video, script)
+    } else {
+      // default affiliate card
+      topAdContent.innerHTML = `
+        <h3 style="margin:0;color:#fff">${data.affiliateName || 'Partner'}</h3>
+        <p style="color:#bbb;margin:8px 0">${data.affiliateDesc || ''}</p>
+        <a class="btn" target="_blank" href="${data.affiliateLink || '#'}">Visit Partner</a>
+      `;
+    }
+  });
+
+  // load predictions and show
+  function renderPredictions(dataObj, filterText='') {
+    predictionsList.innerHTML = '';
+    if (!dataObj) {
+      predictionsList.innerHTML = "<p style='color:#888'>No predictions yet. Check back soon.</p>";
+      return;
+    }
+    const items = Object.entries(dataObj).map(([id, item]) => ({id, ...item}));
+    // order: newest first if each item has createdAt
+    items.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    let shown=0;
+    items.forEach(item => {
+      const txt = `${item.match || ''} ${item.details || ''}`.toLowerCase();
+      if (filterText && !txt.includes(filterText.toLowerCase())) return;
+      const div = document.createElement('div');
+      div.className = 'prediction';
+      div.innerHTML = `
+        <h3>${escapeHtml(item.match || '—')}</h3>
+        <div class="odds">Odds: ${escapeHtml(item.odds || '—')}</div>
+        <p style="color:#ccc">${escapeHtml(item.details || '')}</p>
+        ${item.affiliateLink ? `<p><a class="btn" target="_blank" href="${escapeAttr(item.affiliateLink)}">BetPawa / Partner</a></p>` : ''}
+      `;
+      predictionsList.appendChild(div);
+      shown++;
+    });
+    if (shown===0) predictionsList.innerHTML = "<p style='color:#888'>No results for this search.</p>";
+  }
+
+  predictionsRef.on('value', snap => renderPredictions(snap.val(), searchBox.value));
+
+  // stats update
+  statsRef.on('value', snap => {
+    const d = snap.val() || {};
+    statPredictions.textContent = d.totalPredictions || 0;
+    statPoints.textContent = d.totalPoints || 0;
+    statEarnings.textContent = 'UGX ' + (d.earnings || 0);
+  });
+
+  // recompute stats whenever predictions or payments change (simple approach)
+  function recalcStats() {
+    predictionsRef.once('value', psnap => {
+      const list = psnap.val() || {};
+      const totalPred = Object.keys(list).length;
+      let totalPoints = 0;
+      Object.values(list).forEach(i => { totalPoints += Number(i.points||0) });
+      // payments contribute to earnings? We'll sum manual payments:
+      paymentsRef.once('value', paysnap => {
+        const pays = paysnap.val() || {};
+        let earnings = 0;
+        Object.values(pays).forEach(p => earnings += Number(p.amount||0));
+        statsRef.set({ totalPredictions: totalPred, totalPoints: totalPoints, earnings: earnings });
+      });
+    });
+  }
+
+  // run recalc on data changes
+  predictionsRef.on('child_added', recalcStats);
+  predictionsRef.on('child_removed', recalcStats);
+  paymentsRef.on('value', recalcStats);
+
+  // search input
+  searchBox.addEventListener('input', (e)=> {
+    predictionsRef.once('value', snap => renderPredictions(snap.val(), e.target.value));
+  });
+
+  // Safe helper (very small)
+  function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]) }
+  function escapeAttr(s){ return encodeURI(s||'') }
+
+  // initial recalc (if needed)
+  recalcStats();
+
+</script>
+</body>
+</html>

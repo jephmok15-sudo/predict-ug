@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Predict UG — Secure Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#000;--card:#0e0e0e;--muted:#9a9a9a;--accent:#e61a1a;--white:#fff}
+  body{margin:0;background:var(--bg);color:var(--white);font-family:Poppins,Arial}
+  header{padding:26px;text-align:center;color:var(--accent)}
+  .wrap{max-width:920px;margin:18px auto;padding:0 16px}
+  .card{background:var(--card);padding:16px;border-radius:12px;margin-bottom:16px}
+  label{display:block;color:#ccc;margin-bottom:6px;font-weight:600}
+  input[type=text], input[type=number], textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #222;background:#0b0b0b;color:#fff}
+  textarea{min-height:90px;resize:vertical}
+  .btn{display:inline-block;padding:10px 14px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;border:none}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .col{flex:1}
+  .small{width:120px}
+  .published{background:#080;padding:8px;border-radius:8px;color:#000;margin-top:8px}
+  footer{padding:20px;text-align:center;color:#777}
+  .hide{display:none}
+</style>
+</head>
+<body>
+
+<header><h1>PREDICT UG — ADMIN</h1><p style="color:#bbb">Owner access only</p></header>
+
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="loginCard" class="card">
+    <label>Enter admin password</label>
+    <input id="adminPassword" type="text" placeholder="Password">
+    <div style="margin-top:10px">
+      <button id="unlockBtn" class="btn">Unlock</button>
+    </div>
+    <div id="loginMsg" style="color:#f88;margin-top:8px"></div>
+  </div>
+
+  <!-- ADMIN DASH (hidden until unlocked) -->
+  <div id="adminPanel" class="hide">
+
+    <div class="card">
+      <h2>Platform Stats (Live)</h2>
+      <div class="row">
+        <div class="col card" style="text-align:center"><strong id="p_count">0</strong><div style="color:#bbb">Predictions</div></div>
+        <div class="col card" style="text-align:center"><strong id="p_points">0</strong><div style="color:#bbb">Points</div></div>
+        <div class="col card" style="text-align:center"><strong id="p_earn">UGX 0</strong><div style="color:#bbb">Earnings</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Add Prediction</h2>
+      <label>Match name</label>
+      <input id="matchInput" type="text" placeholder="e.g Arsenal vs Chelsea">
+      <label>Odds</label>
+      <input id="oddsInput" type="text" placeholder="e.g 1.75">
+      <label>Prediction details</label>
+      <textarea id="detailsInput"></textarea>
+      <label>Points (numbers only)</label>
+      <input id="pointsInput" type="number" placeholder="50">
+      <div style="margin-top:10px">
+        <button id="publishPrediction" class="btn">Publish</button>
+        <span id="pubMsg" style="margin-left:12px;color:#8f8"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Ads & Affiliate</h2>
+      <label>Affiliate name</label>
+      <input id="affName" type="text" placeholder="Partner name">
+      <label>Affiliate link (URL)</label>
+      <input id="affLink" type="text" placeholder="https://...">
+      <label>Top ad HTML (paste ad code / image / video)</label>
+      <textarea id="topAdHtml" placeholder="<img src='...'> or <iframe>..."></textarea>
+      <div style="margin-top:10px"><button id="saveAds" class="btn">Save Ads & Affiliate</button> <span id="adsMsg" style="margin-left:12px;color:#8f8"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Manual Payments / Receipts</h2>
+      <label>User name / phone</label>
+      <input id="payUser" type="text" placeholder="John - 2567...">
+      <label>Amount (UGX)</label>
+      <input id="payAmount" type="number">
+      <label>Payment type</label>
+      <input id="payType" type="text" placeholder="MTN, Airtel...">
+      <div style="margin-top:10px"><button id="recordPay" class="btn">Record Payment</button> <span id="payMsg" style="margin-left:12px;color:#8f8"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>System Settings</h2>
+      <label>Min points (users)</label>
+      <input id="minPoints" type="number" placeholder="50">
+      <label>Max points</label>
+      <input id="maxPoints" type="number" placeholder="10000">
+      <div style="margin-top:10px"><button id="saveSettings" class="btn">Save Settings</button> <span id="setMsg" style="margin-left:12px;color:#8f8"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>Published Predictions</h2>
+      <div id="publishedList" style="color:#ccc">Loading...</div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>Predict UG • Admin</footer>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  // ---------- FIREBASE CONFIG (same as index!) ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyBnIeC8g8sx0KxKgoHQNqRlT3u3EVYA_10",
+    authDomain: "predict-ug.firebaseapp.com",
+    databaseURL: "https://predict-ug-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "predict-ug",
+    storageBucket: "predict-ug.firebasestorage.app",
+    messagingSenderId: "904307610384",
+    appId: "1:904307610384:web:588965a0949648ff89cb95"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // refs
+  const predictionsRef = db.ref('predictions');
+  const adsRef = db.ref('adsAffiliate');
+  const statsRef = db.ref('stats');
+  const paymentsRef = db.ref('payments');
+  const settingsRef = db.ref('settings');
+
+  // UI
+  const loginCard = document.getElementById('loginCard');
+  const adminPanel = document.getElementById('adminPanel');
+  const adminPasswordInput = document.getElementById('adminPassword');
+  const unlockBtn = document.getElementById('unlockBtn');
+  const loginMsg = document.getElementById('loginMsg');
+
+  const p_count = document.getElementById('p_count');
+  const p_points = document.getElementById('p_points');
+  const p_earn = document.getElementById('p_earn');
+
+  const matchInput = document.getElementById('matchInput');
+  const oddsInput = document.getElementById('oddsInput');
+  const detailsInput = document.getElementById('detailsInput');
+  const pointsInput = document.getElementById('pointsInput');
+  const publishBtn = document.getElementById('publishPrediction');
+  const pubMsg = document.getElementById('pubMsg');
+
+  const affName = document.getElementById('affName');
+  const affLink = document.getElementById('affLink');
+  const topAdHtml = document.getElementById('topAdHtml');
+  const saveAds = document.getElementById('saveAds');
+  const adsMsg = document.getElementById('adsMsg');
+
+  const payUser = document.getElementById('payUser');
+  const payAmount = document.getElementById('payAmount');
+  const payType = document.getElementById('payType');
+  const recordPay = document.getElementById('recordPay');
+  const payMsg = document.getElementById('payMsg');
+
+  const minPoints = document.getElementById('minPoints');
+  const maxPoints = document.getElementById('maxPoints');
+  const saveSettings = document.getElementById('saveSettings');
+  const setMsg = document.getElementById('setMsg');
+
+  const publishedList = document.getElementById('publishedList');
+
+  // Admin password (client-side). You said: Nampoza10
+  const ADMIN_PASSWORD = 'Nampoza10';
+
+  unlockBtn.addEventListener('click', ()=>{
+    const val = adminPasswordInput.value || '';
+    if (val === ADMIN_PASSWORD) {
+      loginCard.classList.add('hide');
+      adminPanel.classList.remove('hide');
+      loadAdminData();
+      loginMsg.textContent = '';
+    } else {
+      loginMsg.textContent = 'Access denied';
+    }
+  });
+
+  // publish prediction
+  publishBtn.addEventListener('click', ()=>{
+    const match = (matchInput.value||'').trim();
+    if (!match) { pubMsg.textContent = 'Enter match'; return; }
+    const obj = {
+      match: match,
+      odds: oddsInput.value||'',
+      details: detailsInput.value||'',
+      points: Number(pointsInput.value||0),
+      createdAt: Date.now()
+    };
+    const newRef = predictionsRef.push();
+    newRef.set(obj, err=>{
+      if (err) pubMsg.textContent = 'Save failed';
+      else { pubMsg.textContent = 'Published'; matchInput.value=''; oddsInput.value=''; detailsInput.value=''; pointsInput.value=''; recalcStats(); }
+      setTimeout(()=>pubMsg.textContent='',2000);
+    });
+  });
+
+  // save ads/affiliate
+  saveAds.addEventListener('click', ()=>{
+    adsRef.set({
+      affiliateName: affName.value||'',
+      affiliateLink: affLink.value||'',
+      topAdHtml: topAdHtml.value||''
+    }, err=>{
+      adsMsg.textContent = err ? 'Save failed' : 'Saved';
+      setTimeout(()=>adsMsg.textContent='',2000);
+    });
+  });
+
+  // manual payment
+  recordPay.addEventListener('click', ()=>{
+    const user = payUser.value || '';
+    const amount = Number(payAmount.value||0);
+    if (!user || !amount) { payMsg.textContent = 'Enter user+amount'; return; }
+    const id = paymentsRef.push().key;
+    paymentsRef.child(id).set({
+      user, amount, type: payType.value||'manual', date: Date.now()
+    }, err=>{
+      payMsg.textContent = err ? 'Failed' : 'Recorded';
+      payUser.value=''; payAmount.value=''; payType.value='';
+      recalcStats();
+      setTimeout(()=>payMsg.textContent='',2000);
+    });
+  });
+
+  // settings
+  saveSettings.addEventListener('click', ()=>{
+    settingsRef.set({ minPoints: Number(minPoints.value||0), maxPoints: Number(maxPoints.value||0)}, err=>{
+      setMsg.textContent = err ? 'Save failed' : 'Saved';
+      setTimeout(()=>setMsg.textContent='',2000);
+    });
+  });
+
+  // load admin data: stats + published list + affiliate values
+  function loadAdminData(){
+    statsRef.on('value', snap => {
+      const d = snap.val() || {};
+      p_count.textContent = d.totalPredictions || 0;
+      p_points.textContent = d.totalPoints || 0;
+      p_earn.textContent = 'UGX ' + (d.earnings || 0);
+    });
+
+    // list predictions
+    predictionsRef.on('value', snap => {
+      const data = snap.val() || {};
+      publishedList.innerHTML = '';
+      Object.entries(data).forEach(([id, item])=>{
+        const div = document.createElement('div');
+        div.style.padding='8px'; div.style.borderBottom='1px solid #111';
+        div.innerHTML = `<strong style="color:var(--accent)">${escapeHtml(item.match||'')}</strong>
+          <div style="color:#ccc">Odds: ${escapeHtml(item.odds||'')} • Points: ${Number(item.points||0)}</div>
+          <div style="margin-top:6px"><button data-id="${id}" class="delBtn" style="background:#422;border-radius:6px;padding:6px 8px;border:none;color:#fff">Delete</button></div>
+        `;
+        publishedList.appendChild(div);
+      });
+      // attach delete handlers
+      document.querySelectorAll('.delBtn').forEach(b=>{
+        b.onclick = (e) => {
+          const id = e.target.getAttribute('data-id');
+          if (!confirm('Delete this prediction?')) return;
+          predictionsRef.child(id).remove();
+        };
+      });
+    });
+
+    // load ads into admin form
+    adsRef.once('value', snap => {
+      const d = snap.val() || {};
+      affName.value = d.affiliateName || '';
+      affLink.value = d.affiliateLink || '';
+      topAdHtml.value = d.topAdHtml || '';
+    });
+
+    // settings
+    settingsRef.once('value', snap => {
+      const s = snap.val() || {};
+      minPoints.value = s.minPoints || '';
+      maxPoints.value = s.maxPoints || '';
+    });
+  }
+
+  // recalc stats function similar to index
+  function recalcStats() {
+    predictionsRef.once('value', psnap => {
+      const list = psnap.val() || {};
+      const totalPred = Object.keys(list).length;
+      let totalPoints = 0;
+      Object.values(list).forEach(i => { totalPoints += Number(i.points||0) });
+      paymentsRef.once('value', paysnap => {
+        const pays = paysnap.val() || {};
+        let earnings = 0;
+        Object.values(pays).forEach(p => earnings += Number(p.amount||0));
+        statsRef.set({ totalPredictions: totalPred, totalPoints: totalPoints, earnings: earnings });
+      });
+    });
+  }
+
+  // helpers
+  function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]) }
+
+</script>
+</body>
+</html>

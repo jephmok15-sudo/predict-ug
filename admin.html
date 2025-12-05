@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>PREDICT UG — Secure Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{margin:0;font-family:Arial;background:black;color:white}
+    header{background:#0b0b0b;padding:20px;text-align:center;border-bottom:2px solid red}
+    h1{color:red;margin:0;letter-spacing:2px}
+    .wrap{max-width:900px;margin:auto;padding:15px}
+    .card{background:#111;padding:15px;border-radius:10px;margin-bottom:15px}
+    input,textarea,select{width:100%;padding:10px;margin:6px 0;background:black;color:white;border:1px solid #333;border-radius:6px}
+    button{padding:10px 20px;background:red;color:white;border:none;border-radius:6px;cursor:pointer}
+    .hidden{display:none}
+    .stats{display:flex;gap:10px}
+    .stat{background:#0a0a0a;padding:15px;border-radius:8px;text-align:center;flex:1}
+    .small{color:#aaa;font-size:13px}
+  </style>
+</head>
+
+<body>
+<header>
+  <h1>PREDICT UG - ADMIN</h1>
+  <p class="small">Private access</p>
+</header>
+
+<div class="wrap">
+
+<!-- PASSWORD SECTION -->
+<div id="loginBox" class="card">
+  <p>Enter Admin Password</p>
+  <input type="password" id="passwordInput" placeholder="••••••••">
+  <button onclick="checkPassword()">Unlock Admin</button>
+  <p id="msg" class="small"></p>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="hidden">
+
+  <div class="card">
+    <h3>Platform Stats</h3>
+    <div class="stats">
+      <div class="stat">
+        <h2 id="totalPredictions">0</h2>
+        <p class="small">Predictions</p>
+      </div>
+      <div class="stat">
+        <h2 id="totalPoints">0</h2>
+        <p class="small">Points</p>
+      </div>
+      <div class="stat">
+        <h2 id="totalEarnings">UGX 0</h2>
+        <p class="small">Earnings</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Add Prediction</h3>
+    <input id="match" placeholder="Match name">
+    <input id="odds" placeholder="Odds">
+    <textarea id="details" placeholder="Prediction details"></textarea>
+    <input id="points" placeholder="Points e.g 50">
+    <button onclick="addPrediction()">Publish</button>
+    <p id="predMsg" class="small"></p>
+  </div>
+
+  <div class="card">
+    <h3>Ads / Affiliate</h3>
+    <input id="affName" placeholder="Affiliate Name">
+    <input id="affLink" placeholder="Affiliate link">
+    <textarea id="adHtml" placeholder="Paste ad image/video html here"></textarea>
+    <button onclick="saveAd()">Save Ad</button>
+    <p id="adMsg" class="small"></p>
+  </div>
+
+  <div class="card">
+    <h3>Record Payment</h3>
+    <input id="payUser" placeholder="User name/number">
+    <input id="payAmount" placeholder="Amount (UGX)">
+    <select id="payType">
+      <option>MTN</option>
+      <option>Airtel</option>
+      <option>Bank</option>
+    </select>
+    <button onclick="savePayment()">Record Payment</button>
+    <p id="payMsg" class="small"></p>
+  </div>
+
+</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+/* FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyBnIeC8g8sx0KxKgoHQNqRlT3u3EVYA_10",
+  authDomain: "predict-ug.firebaseapp.com",
+  databaseURL: "https://predict-ug-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "predict-ug",
+  storageBucket: "predict-ug.firebasestorage.app",
+  messagingSenderId: "904307610384",
+  appId: "1:904307610384:web:588965a0949648ff89cb95"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* PASSWORD HASH (Nampoza10) */
+const adminHash = "c57c3f823db222576eaaa9603c5b41814855833422df2629b772edff8601edee";
+
+/* HASH FUNCTION */
+async function sha256(text){
+  const data = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+/* CHECK PASSWORD */
+async function checkPassword(){
+  const input = document.getElementById("passwordInput").value;
+  const hash = await sha256(input);
+
+  if(hash === adminHash){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("adminPanel").classList.remove("hidden");
+  }else{
+    document.getElementById("msg").innerText = "Access Denied";
+  }
+}
+
+/* ADD PREDICTION */
+function addPrediction(){
+  const match = match.value;
+  const odds = odds.value;
+  const details = details.value;
+  const points = Number(points.value);
+
+  if(!match || !odds || !details || !points){
+    predMsg.innerText="Fill all fields";
+    return;
+  }
+
+  db.ref("predictions").push({
+    match, odds, details, points, time:Date.now()
+  });
+
+  predMsg.innerText="Prediction Added ✅";
+}
+
+/* SAVE ADS */
+function saveAd(){
+  db.ref("adsAffiliate").set({
+    affiliateName: affName.value,
+    affiliateLink: affLink.value,
+    topAdHtml: adHtml.value
+  });
+
+  adMsg.innerText="Ad saved ✅";
+}
+
+/* PAYMENTS */
+function savePayment(){
+  db.ref("payments").push({
+    user: payUser.value,
+    amount: payAmount.value,
+    type: payType.value,
+    time:Date.now()
+  });
+
+  payMsg.innerText="Payment recorded ✅";
+}
+
+/* STATS */
+db.ref("predictions").on("value",snap=>{
+  const data = snap.val()||{};
+  totalPredictions.innerText = Object.keys(data).length;
+
+  let pts=0;
+  Object.values(data).forEach(p=>pts += Number(p.points||0));
+  totalPoints.innerText = pts;
+});
+
+/* EARNINGS */
+db.ref("payments").on("value",snap=>{
+  let sum=0;
+  if(snap.val()){
+    Object.values(snap.val()).forEach(p=>sum += Number(p.amount||0));
+  }
+  totalEarnings.innerText = "UGX " + sum;
+});
+</script>
+</body>
+</html>

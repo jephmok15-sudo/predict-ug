@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PREDICT UG — Smart Predictions</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<style>
+body{margin:0;font-family:Arial;background:black;color:white}
+header{background:#090909;padding:20px;text-align:center;border-bottom:2px solid red}
+h1{color:red;margin:0;letter-spacing:2px}
+.small{color:#aaa;font-size:13px}
+.wrap{max-width:900px;margin:auto;padding:15px}
+
+.card{background:#0f0f0f;padding:15px;border-radius:12px;margin-bottom:15px}
+
+.stats{display:flex;gap:10px}
+.stat{background:#050505;padding:15px;border-radius:10px;flex:1;text-align:center;border:1px solid #222}
+.stat h2{margin:0;color:red}
+
+input{width:100%;padding:10px;background:black;color:white;
+border:1px solid #333;border-radius:8px;margin-top:5px}
+
+button{padding:10px 20px;background:red;color:white;
+border:none;border-radius:8px;margin-top:10px;cursor:pointer}
+
+.prediction{background:#0a0a0a;border:1px solid #222;padding:12px;border-radius:10px;margin-bottom:10px}
+
+#adBox img, #adBox video, #adBox iframe{
+max-width:100%;border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+<header>
+  <h1>PREDICT UG</h1>
+  <p class="small">Smart football predictions & tips (No direct betting)</p>
+</header>
+
+<div class="wrap">
+
+<!-- ADS SECTION -->
+<div class="card">
+  <h3 style="color:red">Sponsored</h3>
+  <div id="adBox">Loading ads...</div>
+</div>
+
+<!-- STATS -->
+<div class="card">
+  <h3 style="color:red">Platform Stats</h3>
+  <div class="stats">
+    <div class="stat">
+      <h2 id="predCount">0</h2>
+      <p class="small">Predictions</p>
+    </div>
+    <div class="stat">
+      <h2 id="pointsCount">0</h2>
+      <p class="small">Total Points</p>
+    </div>
+    <div class="stat">
+      <h2 id="earnCount">UGX 0</h2>
+      <p class="small">Earnings</p>
+    </div>
+  </div>
+</div>
+
+<!-- SEARCH -->
+<div class="card">
+  <h3 style="color:red">Search Match</h3>
+  <input id="search" placeholder="e.g Arsenal vs Chelsea">
+</div>
+
+<!-- PREDICTIONS -->
+<div class="card">
+  <h3 style="color:red">Latest Predictions</h3>
+  <div id="predictions">Loading predictions...</div>
+</div>
+
+<!-- SUPPORT -->
+<div class="card">
+  <h3 style="color:red">Support / Partner</h3>
+  <p class="small">
+    This website provides football predictions only.  
+    To support or partner with us, please contact the admin.
+  </p>
+</div>
+
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBnIeC8g8sx0KxKgoHQNqRlT3u3EVYA_10",
+  authDomain: "predict-ug.firebaseapp.com",
+  databaseURL: "https://predict-ug-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "predict-ug",
+  storageBucket: "predict-ug.firebasestorage.app",
+  messagingSenderId: "904307610384",
+  appId: "1:904307610384:web:588965a0949648ff89cb95"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* LOAD ADS */
+db.ref("adsAffiliate").on("value", snap=>{
+  const ad = snap.val();
+  if(ad && ad.topAdHtml){
+    adBox.innerHTML = ad.topAdHtml + 
+      `<p class="small">Powered by: <a href="${ad.affiliateLink}" style="color:red">${ad.affiliateName}</a></p>`;
+  } else {
+    adBox.innerHTML = "No active sponsor";
+  }
+});
+
+/* LOAD PREDICTIONS */
+db.ref("predictions").on("value", snap=>{
+  const data = snap.val() || {};
+  let html="";
+  let totalPoints=0;
+  let count=0;
+
+  Object.values(data).reverse().forEach(p=>{
+    count++;
+    totalPoints += Number(p.points || 0);
+
+    html += `
+    <div class="prediction">
+      <b style="color:red">${p.match}</b><br>
+      Odds: ${p.odds}<br><br>
+      ${p.details}<br><br>
+      Points: <b>${p.points}</b>
+    </div>`;
+  });
+
+  predictions.innerHTML = html || "No predictions yet";
+  predCount.innerText = count;
+  pointsCount.innerText = totalPoints;
+});
+
+/* EARNINGS */
+db.ref("payments").on("value",snap=>{
+  let sum=0;
+  if(snap.val()){
+    Object.values(snap.val()).forEach(p=>sum += Number(p.amount||0));
+  }
+  earnCount.innerText = "UGX " + sum;
+});
+
+/* SEARCH */
+search.addEventListener("input",()=>{
+  let term = search.value.toLowerCase();
+  let items = document.querySelectorAll(".prediction");
+
+  items.forEach(el=>{
+    if(el.innerText.toLowerCase().includes(term)){
+      el.style.display="block";
+    } else {
+      el.style.display="none";
+    }
+  });
+});
+</script>
+</body>
+</html>

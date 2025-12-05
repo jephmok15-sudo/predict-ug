@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Predict UG | Admin Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body{
+      margin:0;
+      background:#0a0a0a;
+      color:white;
+      font-family:'Poppins',sans-serif;
+    }
+
+    header{
+      background:black;
+      padding:15px;
+      text-align:center;
+      border-bottom:2px solid red;
+    }
+
+    h1{
+      color:red;
+      margin:0;
+    }
+
+    .container{
+      padding:20px;
+      max-width:1100px;
+      margin:auto;
+    }
+
+    .card{
+      background:#111;
+      padding:20px;
+      border-radius:12px;
+      margin-bottom:25px;
+      border:1px solid #222;
+    }
+
+    h2{
+      color:#ff0000;
+      margin-bottom:15px;
+    }
+
+    input, textarea{
+      width:100%;
+      padding:12px;
+      margin-top:8px;
+      background:black;
+      color:white;
+      border:1px solid #333;
+      border-radius:8px;
+      outline:none;
+    }
+
+    button{
+      background:red;
+      color:white;
+      padding:12px 20px;
+      border:none;
+      border-radius:8px;
+      margin-top:10px;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    button:hover{
+      background:#c00000;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:15px;
+    }
+
+    .stat-box{
+      padding:15px;
+      background:black;
+      border:1px solid red;
+      border-radius:10px;
+      text-align:center;
+    }
+
+    .stat-box h3{
+      margin:5px 0;
+      color:#0f0;
+    }
+
+    .ad-box{
+      background:#000;
+      border:1px dashed red;
+      padding:30px;
+      text-align:center;
+      margin-top:10px;
+    }
+
+    .note{
+      font-size:13px;
+      opacity:0.7;
+    }
+
+    footer{
+      text-align:center;
+      padding:20px;
+      color:#555;
+      font-size:13px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PREDICT UG — ADMIN PANEL</h1>
+</header>
+
+<div class="container">
+
+  <!-- DASHBOARD -->
+  <div class="card">
+    <h2>📊 Dashboard</h2>
+    <div class="stats">
+      <div class="stat-box">
+        <p>Total Users</p>
+        <h3 id="users">0</h3>
+      </div>
+      <div class="stat-box">
+        <p>Total Points Used</p>
+        <h3 id="points">0</h3>
+      </div>
+      <div class="stat-box">
+        <p>Total Earnings</p>
+        <h3>UGX <span id="money">0</span></h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD PREDICTION -->
+  <div class="card">
+    <h2>➕ Add New Prediction</h2>
+
+    <input type="text" id="game" placeholder="Match / Event" />
+    <textarea id="tip" rows="3" placeholder="Your prediction / tip"></textarea>
+    <input type="number" id="odd" placeholder="Odds" />
+
+    <button onclick="addPrediction()">Publish Prediction</button>
+
+    <p class="note">This will be visible on the user webpage</p>
+  </div>
+
+  <!-- SYSTEM CONTROL -->
+  <div class="card">
+    <h2>⚙️ System Settings</h2>
+
+    <label>Minimum Points To Prediction</label>
+    <input type="number" id="minPoints" placeholder="eg 100">
+
+    <label>Maximum Points Allowed</label>
+    <input type="number" id="maxPoints" placeholder="eg 10000">
+
+    <button onclick="updateLimits()">Save Settings</button>
+  </div>
+
+  <!-- PAYMENT MONITOR (SIMULATION) -->
+  <div class="card">
+    <h2>💰 User Payments Monitor</h2>
+    <p>All Mobile / Card / Airtel / MTN payments will show here automatically in future.</p>
+
+    <table style="width:100%; border-collapse:collapse; font-size:14px">
+      <tr style="background:#000">
+        <th style="border:1px solid #333; padding:8px">User</th>
+        <th style="border:1px solid #333; padding:8px">Amount</th>
+        <th style="border:1px solid #333; padding:8px">Date</th>
+      </tr>
+      <tbody id="payments">
+        <tr>
+          <td style="border:1px solid #222; padding:8px">Demo User</td>
+          <td style="border:1px solid #222; padding:8px">UGX 0</td>
+          <td style="border:1px solid #222; padding:8px">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ADS AREA -->
+  <div class="card">
+    <h2>📢 Admin Advertisement Spot</h2>
+    <div class="ad-box">
+      PASTE GOOGLE ADSENSE / AFFILIATE ADS CODE HERE
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  © 2025 Predict UG — Admin Panel
+</footer>
+
+<script>
+  let totalUsers = localStorage.getItem("users") || 27;
+  let totalPoints = localStorage.getItem("points") || 1560;
+  let totalMoney = localStorage.getItem("money") || 350000;
+
+  document.getElementById("users").innerText = totalUsers;
+  document.getElementById("points").innerText = totalPoints;
+  document.getElementById("money").innerText = totalMoney;
+
+  function addPrediction(){
+    let game = document.getElementById("game").value;
+    let tip = document.getElementById("tip").value;
+    let odd = document.getElementById("odd").value;
+
+    if(game=="" || tip=="" || odd==""){
+      alert("Fill all fields");
+      return;
+    }
+
+    let predictions = JSON.parse(localStorage.getItem("predictions") || "[]");
+
+    predictions.push({
+      game:game,
+      tip:tip,
+      odd:odd,
+      date:new Date().toLocaleString()
+    });
+
+    localStorage.setItem("predictions", JSON.stringify(predictions));
+
+    alert("✅ Prediction Published Successfully");
+
+    document.getElementById("game").value="";
+    document.getElementById("tip").value="";
+    document.getElementById("odd").value="";
+  }
+
+  function updateLimits(){
+    let min = document.getElementById("minPoints").value;
+    let max = document.getElementById("maxPoints").value;
+
+    localStorage.setItem("minPoints",min);
+    localStorage.setItem("maxPoints",max);
+
+    alert("✅ Limits Updated Successfully");
+  }
+</script>
+
+</body>
+</html>
